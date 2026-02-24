@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FITT → Stress Pathways → Adaptation Simulator</title>
+<style>
+  :root{
+    --bg:#f6f8fb;
+    --card:#ffffff;
+    --ink:#1e2a38;
+    --muted:#4b5563;
+    --accent:#0b3d91;
+    --ok:#1f8a3b;
+    --warn:#b45309;
+    --bad:#b91c1c;
+    --easy:#475569;
+    --line:#d7deea;
+    --shadow:0 4px 14px rgba(0,0,0,0.08);
+  }
+
+  body{
+    margin:0;
+    padding:22px 14px 34px;
+    font-family: Arial, Helvetica, sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+  }
+
+  .container{ max-width: 1100px; margin:0 auto; }
+  h1{ margin:0 0 12px; font-size:22px; }
+
+  .grid{
+    display:grid;
+    gap:14px;
+    grid-template-columns: 1fr;
+  }
+  @media(min-width: 980px){
+    .grid{ grid-template-columns: 390px 1fr; }
+  }
+
+  .card{
+    background:var(--card);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:14px;
+  }
+
+  .row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+  }
+
+  .tag{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    background:#e9f0ff;
+    color:var(--accent);
+    font-weight:800;
+    font-size:12px;
+  }
+
+  .btn{
+    border:none;
+    background:var(--accent);
+    color:#fff;
+    border-radius:10px;
+    padding:10px 12px;
+    cursor:pointer;
+    font-weight:800;
+    font-size:13px;
+  }
+  .btn:hover{ filter:brightness(0.95); }
+  .btn.secondary{ background:#334155; }
+  .btn.ghost{
+    background:#eef2ff;
+    color:var(--accent);
+    border:1px solid #c7d2fe;
+  }
+
+  .controls{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* Inputs */
+  .field{ margin:10px 0 12px; }
+  .labelRow{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:6px;
+  }
+  .labelRow .label{
+    font-weight:900;
+    font-size:13px;
+    color:#0f172a;
+  }
+  .labelRow .value{
+    font-weight:900;
+    color:var(--accent);
+    font-size:13px;
+  }
+  input[type="range"]{ width:100%; }
+
+  /* Output */
+  .outputsTop{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:10px;
+  }
+
+  .bigCallout{
+    flex:1 1 420px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px;
+    background:#fbfcff;
+  }
+  .bigCallout h2{
+    margin:0 0 6px;
+    font-size:16px;
+    color:var(--accent);
+  }
+  .bigCallout .line{
+    margin:4px 0;
+    color:#0f172a;
+    font-weight:900;
+  }
+  .bigCallout .small{
+    color:var(--muted);
+    font-weight:600;
+    font-size:12px;
+    margin-top:6px;
+    line-height:1.3;
+  }
+
+  .statusPill{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    font-weight:900;
+    font-size:12px;
+    color:#fff;
+    white-space:nowrap;
+  }
+  .pill-easy{ background:var(--easy); }
+  .pill-ok{ background:var(--ok); }
+  .pill-warn{ background:var(--warn); }
+  .pill-bad{ background:var(--bad); }
+
+  .meterBlock{
+    flex:1 1 270px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px;
+    background:#fff;
+    min-width: 270px;
+  }
+  .meterBlock h3{
+    margin:0 0 8px;
+    font-size:14px;
+    color:#0f172a;
+  }
+
+  .barRow{ margin:10px 0; }
+  .barLabel{
+    display:flex;
+    justify-content:space-between;
+    font-size:12px;
+    color:#0f172a;
+    font-weight:900;
+    margin-bottom:6px;
+  }
+  .barWrap{
+    width:100%;
+    height:12px;
+    background:#edf2f7;
+    border-radius:999px;
+    overflow:hidden;
+    border:1px solid #e2e8f0;
+  }
+  .barFill{
+    height:100%;
+    width:0%;
+    background:#64748b;
+    border-radius:999px;
+    transition: width 0.18s ease;
+  }
+
+  .barFill.mechanical{ background:#ef4444; }
+  .barFill.metabolic{ background:#f59e0b; }
+  .barFill.bioenergetic{ background:#3b82f6; }
+  .barFill.recovery{ background:#a855f7; }
+
+  .barFill.atppc{ background:#0ea5e9; }
+  .barFill.gly{ background:#f97316; }
+  .barFill.ox{ background:#10b981; }
+
+  .warningBox{
+    border-left: 5px solid var(--warn);
+    background:#fff7ed;
+    border-radius:12px;
+    padding:10px 12px;
+    font-size:12.5px;
+    color:#0f172a;
+    line-height:1.35;
+    margin-top:10px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>FITT → Stress Pathways → Adaptation Simulator</h1>
+
+  <div class="grid">
+    <!-- LEFT: Inputs -->
+    <div class="card">
+      <div class="row">
+        <span class="tag">Controls</span>
+        <div class="controls">
+          <button class="btn ghost" onclick="applyPreset('strength')">Strength</button>
+          <button class="btn ghost" onclick="applyPreset('hypertrophy')">Hypertrophy</button>
+          <button class="btn ghost" onclick="applyPreset('endurance')">Endurance</button>
+          <button class="btn secondary" onclick="resetAll()">Reset</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="labelRow">
+          <div class="label">Intensity (% 1RM)</div>
+          <div class="value"><span id="vIntensity">75</span>%</div>
+        </div>
+        <input id="intensity" type="range" min="30" max="100" step="1" value="75"/>
+      </div>
+
+      <div class="field">
+        <div class="labelRow">
+          <div class="label">Reps per set</div>
+          <div class="value"><span id="vReps">8</span></div>
+        </div>
+        <input id="reps" type="range" min="1" max="30" step="1" value="8"/>
+      </div>
+
+      <div class="field">
+        <div class="labelRow">
+          <div class="label">Sets per session</div>
+          <div class="value"><span id="vSets">4</span></div>
+        </div>
+        <input id="sets" type="range" min="1" max="10" step="1" value="4"/>
+      </div>
+
+      <div class="field">
+        <div class="labelRow">
+          <div class="label">Rest interval (seconds)</div>
+          <div class="value"><span id="vRest">150</span>s</div>
+        </div>
+        <input id="rest" type="range" min="15" max="300" step="5" value="150"/>
+      </div>
+
+      <div class="field">
+        <div class="labelRow">
+          <div class="label">Frequency (sessions per week)</div>
+          <div class="value"><span id="vFreq">3</span>/wk</div>
+        </div>
+        <input id="freq" type="range" min="1" max="7" step="1" value="3"/>
+      </div>
+
+      <div id="guardrailMsg" class="warningBox" style="display:none;"></div>
+    </div>
+
+    <!-- RIGHT: Outputs -->
+    <div class="card">
+      <div class="outputsTop">
+        <div class="bigCallout">
+          <h2>Output</h2>
+          <div class="line">Dominant pathway: <span id="dominant" style="color:var(--accent);">Mechanical Tension</span></div>
+          <div class="line">Adaptation bias: <span id="adaptation" style="color:var(--accent);">Strength</span></div>
+          <div class="line">Training challenge: <span id="recoveryPill" class="statusPill pill-ok">Manageable</span></div>
+          <div class="small" id="summaryText"></div>
+        </div>
+
+        <div class="meterBlock">
+          <h3>Stress</h3>
+
+          <div class="barRow">
+            <div class="barLabel"><span>Mechanical tension</span><span id="mMech">0</span></div>
+            <div class="barWrap"><div id="bMech" class="barFill mechanical"></div></div>
+          </div>
+
+          <div class="barRow">
+            <div class="barLabel"><span>Metabolic stress</span><span id="mMet">0</span></div>
+            <div class="barWrap"><div id="bMet" class="barFill metabolic"></div></div>
+          </div>
+
+          <div class="barRow">
+            <div class="barLabel"><span>Energy stress</span><span id="mBio">0</span></div>
+            <div class="barWrap"><div id="bBio" class="barFill bioenergetic"></div></div>
+          </div>
+
+          <div class="barRow">
+            <div class="barLabel"><span>Recovery demand</span><span id="mRec">0</span></div>
+            <div class="barWrap"><div id="bRec" class="barFill recovery"></div></div>
+          </div>
+        </div>
+
+        <div class="meterBlock">
+          <h3>ATP Contribution</h3>
+
+          <div class="barRow">
+            <div class="barLabel"><span>ATP-PC</span><span id="pPC">0%</span></div>
+            <div class="barWrap"><div id="bPC" class="barFill atppc"></div></div>
+          </div>
+
+          <div class="barRow">
+            <div class="barLabel"><span>Glycolysis</span><span id="pGly">0%</span></div>
+            <div class="barWrap"><div id="bGly" class="barFill gly"></div></div>
+          </div>
+
+          <div class="barRow">
+            <div class="barLabel"><span>Ox Phos</span><span id="pOx">0%</span></div>
+            <div class="barWrap"><div id="bOx" class="barFill ox"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---------- Helpers ----------
+  const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+  const round = (x) => Math.round(x);
+  const setText = (id, val) => document.getElementById(id).textContent = val;
+
+  // Assumed constant tempo (seconds per rep)
+  const SEC_PER_REP = 2;
+
+  function predictedMaxReps(intensity){
+    // Educational approximation (typical): not universal.
+    const r = Math.round((100 - intensity) * 0.5 + 1);
+    return clamp(r, 1, 30);
+  }
+
+  // ---------- Inputs ----------
+  const el = {
+    intensity: document.getElementById("intensity"),
+    reps: document.getElementById("reps"),
+    sets: document.getElementById("sets"),
+    rest: document.getElementById("rest"),
+    freq: document.getElementById("freq"),
+  };
+
+  function syncLabels(){
+    setText("vIntensity", el.intensity.value);
+    setText("vReps", el.reps.value);
+    setText("vSets", el.sets.value);
+    setText("vRest", el.rest.value);
+    setText("vFreq", el.freq.value);
+  }
+
+  // ---------- Guardrails ----------
+  function applyGuardrails(){
+    const I = +el.intensity.value;
+    let reps = +el.reps.value;
+    let sets = +el.sets.value;
+    let rest = +el.rest.value;
+
+    const maxR = predictedMaxReps(I);
+    let changed = false;
+    let msgs = [];
+
+    if (reps > maxR){
+      reps = maxR;
+      el.reps.value = reps;
+      changed = true;
+      msgs.push(`Reps adjusted for typical expectations at ${I}% 1RM.`);
+    }
+
+    if (I >= 95 && sets > 6){
+      sets = 6; el.sets.value = sets; changed = true;
+      msgs.push("Sets capped for extremely high intensity.");
+    } else if (I >= 90 && sets > 8){
+      sets = 8; el.sets.value = sets; changed = true;
+      msgs.push("Sets capped for very high intensity.");
+    }
+
+    if (I >= 90 && rest < 120){
+      rest = 120;
+      el.rest.value = rest;
+      changed = true;
+      msgs.push("Rest increased for very high intensity.");
+    }
+
+    const box = document.getElementById("guardrailMsg");
+    if (changed){
+      box.style.display = "block";
+      box.innerHTML = "<b>Adjusted:</b><br>" + msgs.map(m => "• " + m).join("<br>");
+    } else {
+      box.style.display = "none";
+      box.innerHTML = "";
+    }
+  }
+
+  // ---------- Energy system estimate ----------
+  function energySystemPercentages(setDurationSec, restSec){
+    let pc, gly, ox;
+
+    if (setDurationSec <= 10){
+      pc = 0.75; gly = 0.20; ox = 0.05;
+    } else if (setDurationSec <= 30){
+      const t = (setDurationSec - 10) / 20;
+      pc = 0.75 - 0.45*t;
+      gly = 0.20 + 0.55*t;
+      ox = 0.05 + 0.10*t;
+    } else if (setDurationSec <= 90){
+      const t = (setDurationSec - 30) / 60;
+      pc = 0.30 - 0.20*t;
+      gly = 0.75 - 0.25*t;
+      ox = 0.15 + 0.45*t;
+    } else {
+      pc = 0.08; gly = 0.40; ox = 0.52;
+    }
+
+    // Rest effect: longer rest supports oxidative contribution a bit more
+    const restBoost = clamp(restSec / 300, 0, 1);
+    ox += 0.12 * restBoost;
+    gly -= 0.06 * restBoost;
+    pc  -= 0.06 * restBoost;
+
+    pc = clamp(pc, 0.01, 0.95);
+    gly = clamp(gly, 0.01, 0.95);
+    ox = clamp(ox, 0.01, 0.95);
+
+    const sum = pc + gly + ox;
+    pc /= sum; gly /= sum; ox /= sum;
+
+    return {
+      pc: Math.round(pc*100),
+      gly: Math.round(gly*100),
+      ox: Math.round(ox*100),
+    };
+  }
+
+  // ---------- Model ----------
+  function computeModel(){
+    const I = +el.intensity.value;
+    const R = +el.reps.value;
+    const S = +el.sets.value;
+    const rest = +el.rest.value;
+    const freq = +el.freq.value;
+
+    const setDuration = R * SEC_PER_REP;
+    const totalWorkSec = setDuration * S;
+    const maxR = predictedMaxReps(I);
+    const effort = clamp(R / maxR, 0, 1);
+    const weeklySets = S * freq;
+
+    // Mechanical tension
+    const setFactor = 1 - Math.exp(-S / 3.5);
+    let mech = (I/100) * (0.55 + 0.45*effort) * setFactor * 100;
+    mech = clamp(mech, 0, 100);
+
+    // Metabolic stress
+    const restShort = clamp(1 - (rest/300), 0, 1);
+    const workFactor = clamp(totalWorkSec / 240, 0, 1);
+    const intensityMid = clamp(1 - Math.abs(I - 65) / 65, 0, 1);
+    let met = (0.45*workFactor + 0.35*restShort + 0.20*intensityMid);
+    met += 0.10 * effort * clamp(1 - Math.abs(I-70)/70, 0, 1);
+    met *= 100;
+    met = clamp(met, 0, 100);
+
+    // Energy stress
+    const lowIntensity = clamp((75 - I) / 45, 0, 1);
+    const longWork = clamp(totalWorkSec / 360, 0, 1);
+    const freqFactor = clamp((freq - 2) / 5, 0, 1);
+    let bio = (0.40*lowIntensity + 0.35*longWork + 0.25*(restShort + freqFactor)/2) * 100;
+    bio = clamp(bio, 0, 100);
+
+    // Recovery demand proxy
+    const doseFactor = clamp((weeklySets - 6) / 20, 0, 1);
+    let rec = (0.45*(mech/100) + 0.35*(met/100) + 0.20*(bio/100)) * 100;
+    rec = rec * (0.68 + 0.70*doseFactor);
+    rec += 12 * clamp((freq - 3) / 4, 0, 1);
+    rec = clamp(rec, 0, 100);
+
+    const atp = energySystemPercentages(setDuration, rest);
+
+    return { I,R,S,rest,freq,setDuration,totalWorkSec,effort,maxR,mech,met,bio,rec,weeklySets,atp };
+  }
+
+  function dominantPathway(m){
+    const pairs = [
+      ["Mechanical Tension", m.mech],
+      ["Metabolic Stress", m.met],
+      ["Energy Stress", m.bio],
+    ];
+    pairs.sort((a,b)=> b[1]-a[1]);
+    return pairs[0][0];
+  }
+
+  function adaptationBias(m){
+    const I = m.I, R = m.R, rest = m.rest;
+    const weeklySets = m.weeklySets;
+
+    const strengthZone =
+      (I >= 80 && R <= 6 && rest >= 150 && weeklySets <= 20);
+
+    const hypertrophyZone =
+      (I >= 60 && I <= 80 && R >= 6 && R <= 15 && rest >= 45 && rest <= 150 && weeklySets >= 8 && weeklySets <= 28);
+
+    const enduranceZone =
+      (I <= 60 && R >= 15 && rest <= 90 && weeklySets >= 9);
+
+    if (m.rec >= 85) return "Overreaching Risk";
+    if (strengthZone) return "Strength";
+    if (hypertrophyZone) return "Hypertrophy";
+    if (enduranceZone) return "Endurance";
+
+    const dom = dominantPathway(m);
+    if (dom.startsWith("Mechanical") && I >= 75) return "Strength";
+    if (dom.startsWith("Metabolic") && R >= 8) return "Hypertrophy";
+    if (dom.startsWith("Energy") && I <= 65) return "Endurance";
+    return "Mixed";
+  }
+
+  function trainingChallengeLabel(m){
+    const I = m.I, R = m.R, S = m.S, freq = m.freq;
+    const weeklySets = m.weeklySets;
+
+    const lowDose = weeklySets <= 6;
+    const lowStress = (m.mech < 35 && m.met < 35 && m.bio < 35);
+    const veryLight = (I <= 55 && R <= 10 && S <= 2 && freq <= 2);
+
+    if ((lowDose && lowStress) || veryLight){
+      return {label:"Too Easy", cls:"pill-easy"};
+    }
+
+    if (freq >= 5){
+      if (weeklySets <= 8) return {label:"Hard", cls:"pill-warn"};
+      return {label:"Very Hard", cls:"pill-bad"};
+    }
+    if (freq === 4){
+      return {label:"Hard", cls:"pill-warn"};
+    }
+
+    if (m.rec < 55) return {label:"Manageable", cls:"pill-ok"};
+    if (m.rec < 75) return {label:"Hard", cls:"pill-warn"};
+    return {label:"Very Hard", cls:"pill-bad"};
+  }
+
+  // ---------- Rendering ----------
+  function setBar(idFill, idNum, value){
+    document.getElementById(idFill).style.width = `${value}%`;
+    document.getElementById(idNum).textContent = round(value);
+  }
+  function setPctBar(idFill, idText, pct){
+    document.getElementById(idFill).style.width = `${pct}%`;
+    document.getElementById(idText).textContent = `${pct}%`;
+  }
+
+  function updateOutputs(){
+    applyGuardrails();
+    syncLabels();
+
+    const m = computeModel();
+
+    setBar("bMech","mMech", m.mech);
+    setBar("bMet","mMet", m.met);
+    setBar("bBio","mBio", m.bio);
+    setBar("bRec","mRec", m.rec);
+
+    setPctBar("bPC","pPC", m.atp.pc);
+    setPctBar("bGly","pGly", m.atp.gly);
+    setPctBar("bOx","pOx", m.atp.ox);
+
+    const dom = dominantPathway(m);
+    const adapt = adaptationBias(m);
+    document.getElementById("dominant").textContent = dom;
+    document.getElementById("adaptation").textContent = adapt;
+
+    const chal = trainingChallengeLabel(m);
+    const pill = document.getElementById("recoveryPill");
+    pill.textContent = chal.label;
+    pill.className = `statusPill ${chal.cls}`;
+
+    // Minimal summary (kept, but short)
+    let summary = "";
+    if (chal.label === "Too Easy") summary = "Increase dose to create a clearer stimulus.";
+    else if (adapt === "Strength") summary = "Higher intensity with longer rest biases force quality.";
+    else if (adapt === "Hypertrophy") summary = "Tension + metabolite accumulation bias hypertrophy.";
+    else if (adapt === "Endurance") summary = "Lower intensity + longer sets bias endurance.";
+    else if (adapt === "Overreaching Risk") summary = "Reduce weekly dose or frequency.";
+    else summary = "Mixed stimulus based on current settings.";
+    document.getElementById("summaryText").textContent = summary;
+  }
+
+  // ---------- Presets ----------
+  function applyPreset(which){
+    if (which === "strength"){
+      el.intensity.value = 87;
+      el.reps.value = 4;
+      el.sets.value = 5;
+      el.rest.value = 210;
+      el.freq.value = 2;
+    }
+    if (which === "hypertrophy"){
+      el.intensity.value = 72;
+      el.reps.value = 10;
+      el.sets.value = 4;
+      el.rest.value = 90;
+      el.freq.value = 3;
+    }
+    if (which === "endurance"){
+      el.intensity.value = 50;
+      el.reps.value = 20;
+      el.sets.value = 3;
+      el.rest.value = 45;
+      el.freq.value = 3;
+    }
+    updateOutputs();
+  }
+
+  function resetAll(){
+    el.intensity.value = 75;
+    el.reps.value = 8;
+    el.sets.value = 4;
+    el.rest.value = 150;
+    el.freq.value = 3;
+    updateOutputs();
+  }
+
+  // ---------- Wiring ----------
+  Object.values(el).forEach(inp => inp.addEventListener("input", updateOutputs));
+  updateOutputs();
+</script>
+</body>
+</html>
